@@ -58,9 +58,8 @@
                 <button class="btn logout-btn" onclick="logoutAdmin()">Secure Logout</button>
             </div>
         </h2>
-
         <!-- SECTION: ADD NEW DOCTOR -->
-        <h3 style="margin-bottom: 0.5rem; color: var(--text-title);">➕ Add New Doctor Profile</h3>
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-title); margin-top: 1.5rem;">➕ Add New Doctor Profile</h3>
         <div class="doctor-form-box">
             <div class="form-group">
                 <label>Doctor Full Name</label>
@@ -68,20 +67,18 @@
             </div>
             <div class="form-group">
                 <label>Specialization</label>
-                <select id="docSpec">
-                    <option value="General">General Physician</option>
-                    <option value="Cardiologist">Cardiologist</option>
-                    <option value="Dermatologist">Dermatologist</option>
-                </select>
+                <input type="text" id="docSpec" list="specializationDataList" class="custom-input" placeholder="Select or type..." style="padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: white; font-size: 1rem; width: 100%;">
+                <datalist id="specializationDataList">
+                    <option value="General"></option>
+                    <option value="Cardiologist"></option>
+                    <option value="Dermatologist"></option>
+                </datalist>
             </div>
             <div class="form-group">
                 <label>Experience (Years)</label>
                 <input type="number" id="docExp" placeholder="e.g. 10">
             </div>
-            <div class="form-group">
-                <label>Rating (1.0 - 5.0)</label>
-                <input type="number" step="0.1" id="docRating" placeholder="e.g. 4.8">
-            </div>
+
             <div class="form-group">
                 <label>City / Location</label>
                 <input type="text" id="docLoc" placeholder="e.g. Lahore">
@@ -96,7 +93,6 @@
             </div>
             <button class="submit-doc-btn" onclick="addNewDoctor()">Register Doctor Into Database</button>
         </div>
-    </div>
 
     <!-- VIEW 1: APPOINTMENTS MATRIX -->
     <div id="appointmentsViewSegment">
@@ -133,7 +129,6 @@
                 <th>Full Name</th>
                 <th>Specialization</th>
                 <th>Experience</th>
-                <th>Rating</th>
                 <th>City Matrix</th>
                 <th>Hospital Base</th>
                 <th>Fee Config</th>
@@ -152,11 +147,13 @@
     const BASE_URL = "http://localhost:8080/api";
     let currentView = "appointments";
 
+<!--PASSWORD OF ADMIN PAGE -->
+
     document.addEventListener("DOMContentLoaded", function() {
         let isAuthenticated = sessionStorage.getItem("admin_logged_in");
         if (isAuthenticated !== "true") {
             let passwordInput = prompt("Enter Secure Admin Master Password:");
-            if (passwordInput === "admin123") {
+            if (passwordInput === "nonametenda") {
                 sessionStorage.setItem("admin_logged_in", "true");
                 loadAdminBookings();
             } else {
@@ -220,7 +217,6 @@
                         <td>${finalName}</td>
                         <td><span style="background:#f0fdf4; color:#166534; padding:0.2rem 0.5rem; border-radius:0.25rem; font-weight:bold; font-size:0.85rem;">${doc.specialization}</span></td>
                         <td>${doc.experience} Years</td>
-                        <td>⭐ ${doc.rating.toFixed(1)}</td>
                         <td>${doc.location}</td>
                         <td>${doc.hospital}</td>
                         <td><b style="color:#15803d;">Rs. ${doc.fee}</b></td>
@@ -322,35 +318,48 @@
         }
     }
 
-    // ADD NEW DOCTOR
+        // === New Doctor Update  ===
     async function addNewDoctor() {
         const name = document.getElementById('docName').value;
         const specialization = document.getElementById('docSpec').value;
         const experience = parseInt(document.getElementById('docExp').value);
-        const rating = parseFloat(document.getElementById('docRating').value);
         const location = document.getElementById('docLoc').value;
         const hospital = document.getElementById('docHosp').value;
         const fee = parseInt(document.getElementById('docFee').value);
 
-        if(!name || !location || !hospital || !fee) { alert("Please complete doctor profile attributes!"); return; }
+        // Verification check parameters (Hum ne yahan se rating check hata diya hai)
+        if(!name || !location || !hospital || !fee) {
+            alert("Please complete doctor profile attributes!");
+            return;
+        }
 
         try {
+            // Sending payload without rating parameter safely to Java Node
             const response = await fetch(`${BASE_URL}/admin/doctors`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, specialization, experience, rating, location, hospital, fee })
+                body: JSON.stringify({ name, specialization, experience, location, hospital, fee })
             });
+
             if(response.ok) {
                 const text = await response.text();
-                alert(text);
+                alert(text); // Database success alert window
+
+                // Clear input fields cleanly after success
                 document.getElementById('docName').value = '';
                 document.getElementById('docLoc').value = '';
                 document.getElementById('docHosp').value = '';
                 document.getElementById('docFee').value = '';
+                document.getElementById('docExp').value = '';
+                if(document.getElementById('docSpec')) document.getElementById('docSpec').value = '';
+
+                // Automatically reload table list if view active
                 if(currentView === "doctors") loadAdminDoctors();
+            } else {
+                alert("Server refused to save doctor profile.");
             }
         } catch (err) {
-            alert("Failed to save doctor.");
+            alert("Failed to save doctor onto database server.");
         }
     }
 
@@ -359,25 +368,100 @@
         checkboxes.forEach(cb => cb.checked = master.checked);
     }
 
+       // === 100% BLANK SCREEN & POP-UP BLOCKER PROOF PRINT FUNCTION ===
     function printSelectedAppointments() {
         const checkboxes = document.querySelectorAll('.print-checkpoint');
+        let selectedRowsHtml = "";
         let selectedAny = false;
 
         checkboxes.forEach(cb => {
-            const row = document.getElementById(`row-${cb.value}`);
-            if (!cb.checked) row.classList.add('no-print');
-            else { row.classList.remove('no-print'); selectedAny = true; }
+            if (cb.checked) {
+                const row = document.getElementById(`row-${cb.value}`);
+                if (row) {
+                    let rowClone = row.cloneNode(true);
+
+                    // Hide checkbox and action management cells from print data safely
+                    const noPrintElements = rowClone.querySelectorAll('.no-print');
+                    noPrintElements.forEach(el => el.style.display = 'none');
+
+                    // Convert drop-down status selection value into clear bold raw text
+                    const select = rowClone.querySelector('.status-select');
+                    if(select) {
+                        const activeStatus = select.value;
+                        const parentTd = select.parentElement;
+                        parentTd.innerHTML = `<b>${activeStatus}</b>`;
+                    }
+
+                    selectedRowsHtml += rowClone.outerHTML;
+                    selectedAny = true;
+                }
+            }
         });
 
-        if(!selectedAny) { alert("Please check at least one box to print!"); return; }
-        window.print();
-        checkboxes.forEach(cb => document.getElementById(`row-${cb.value}`).classList.remove('no-print'));
+        if (!selectedAny) {
+            alert("Please check at least one box to print!");
+            return;
+        }
+
+        // CREATE A SEPARATE IFRAME CONTAINER (100% POP-UP PROOF & BYPASSES BODY * HIDDEN CSS BLOCKS)
+        let printFrame = document.getElementById('securePrintFrame');
+        if (!printFrame) {
+            printFrame = document.createElement('iframe');
+            printFrame.id = 'securePrintFrame';
+            printFrame.style.position = 'fixed';
+            printFrame.style.bottom = '0';
+            printFrame.style.right = '0';
+            printFrame.style.width = '0';
+            printFrame.style.height = '0';
+            printFrame.style.border = 'none';
+            document.body.appendChild(printFrame);
+        }
+
+        const frameDoc = printFrame.contentWindow.document;
+        frameDoc.open();
+        frameDoc.write(`
+            <html>
+            <head>
+                <title>DMart Official Booking Receipt Log</title>
+                <style>
+                    body { font-family: 'Inter', sans-serif; padding: 30px; color: #0f172a; background: white; }
+                    h2 { text-align: center; margin-bottom: 20px; color: #0284c7; font-size: 22px; border-bottom: 2px solid #cbd5e1; padding-bottom: 10px; }
+                    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+                    th, td { padding: 12px; text-align: left; border-bottom: 1px solid #cbd5e1; font-size: 14px; }
+                    th { background-color: #f1f5f9; font-weight: bold; color: #0f172a; }
+                    tr:hover { background-color: #f8fafc; }
+                </style>
+            </head>
+            <body>
+                <h2>🏥 Smart Doctor Official Booking Receipt Log</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Doctor ID</th>
+                            <th>Patient Name</th>
+                            <th>Contact Phone</th>
+                            <th>Appointment Date</th>
+                            <th>Status Matrix</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${selectedRowsHtml}
+                    </tbody>
+                </table>
+            </body>
+            </html>
+        `);
+        frameDoc.close();
+
+        // Trigger safe print rendering flow directly inside the isolated document context
+        setTimeout(() => {
+            printFrame.contentWindow.focus();
+            printFrame.contentWindow.print();
+        }, 300);
     }
 
-    function logoutAdmin() {
-        sessionStorage.removeItem("admin_logged_in");
-        window.location.href = "index.html";
-    }
 </script>
+</div>
 </body>
 </html>

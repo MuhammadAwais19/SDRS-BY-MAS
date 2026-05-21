@@ -11,7 +11,6 @@ public class Doctor {
     private String name;
     private String specialization;
     private int experience;
-    private double rating;
     private String location;
     private String hospital;
     private int fee; // Real-time updated financial parameter mapping
@@ -21,7 +20,6 @@ public class Doctor {
     public String getName() { return name; }
     public String getSpecialization() { return specialization; }
     public int getExperience() { return experience; }
-    public double getRating() { return rating; }
     public String getLocation() { return location; }
     public String getHospital() { return hospital; }
     public int getFee() { return fee; }
