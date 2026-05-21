@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Admin Portal - Smart Doctor Engine</title>
+    <style>
+        :root {
+            --primary: #0284c7;
+            --text-title: #0f172a;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg-gradient); color: #334155; padding: 2rem; min-height: 100vh; }
+        .admin-container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 1rem; padding: 2rem; box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+
+        @media print {
+            body * { visibility: hidden; }
+            #printSection, #printSection * { visibility: visible; }
+            #printSection { position: absolute; left: 0; top: 0; width: 100%; }
+            .no-print { display: none !important; }
+        }
+
+        h2 { color: var(--text-title); margin-bottom: 1.5rem; display: flex; justify-content: space-between; align-items: center; }
+        .btn { padding: 0.5rem 1rem; border: none; border-radius: 0.5rem; cursor: pointer; font-weight: bold; margin-left: 5px; transition: all 0.2s; }
+        .logout-btn { background-color: #ef4444; color: white; }
+        .print-btn { background-color: #10b981; color: white; }
+        .toggle-btn { background-color: #6366f1; color: white; }
+        .delete-btn { background-color: #fee2e2; color: #ef4444; font-size: 0.85rem; }
+
+        .doctor-form-box { background: #f1f5f9; padding: 1.5rem; border-radius: 0.75rem; margin-bottom: 2rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; }
+        .form-group { display: flex; flex-direction: column; gap: 0.4rem; }
+        .form-group label { font-size: 0.85rem; font-weight: bold; color: var(--text-title); }
+        .form-group input, .form-group select { padding: 0.6rem; border: 1px solid #cbd5e1; border-radius: 0.5rem; background: white; }
+        .submit-doc-btn { background: var(--primary); color: white; grid-column: 1 / -1; padding: 0.75rem; border: none; border-radius: 0.5rem; font-weight: bold; cursor: pointer; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+        th, td { padding: 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background-color: #f1f5f9; color: var(--text-title); font-weight: 700; }
+        tr:hover { background-color: #f8fafc; }
+
+        .status-select { padding: 0.3rem 0.5rem; border-radius: 0.25rem; font-weight: bold; border: 1px solid #cbd5e1; }
+        .status-Booked { background-color: #e0f2fe; color: #0369a1; }
+        .status-Visited { background-color: #dcfce7; color: #15803d; }
+        .status-Missing { background-color: #fee2e2; color: #b91c1c; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div class="admin-container">
+    <div class="no-print">
+        <h2>
+            <span>🛠️ Smart Doctor Advanced Admin Panel</span>
+            <div>
+                <button class="btn toggle-btn" id="viewToggleBtn" onclick="toggleMainViews()">📋 View Doctors Registry</button>
+                <button class="btn print-btn" id="printBtn" onclick="printSelectedAppointments()">🖨️ Print Selected</button>
+                <button class="btn logout-btn" onclick="logoutAdmin()">Secure Logout</button>
+            </div>
+        </h2>
+
+        <!-- SECTION: ADD NEW DOCTOR -->
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-title);">➕ Add New Doctor Profile</h3>
+        <div class="doctor-form-box">
+            <div class="form-group">
+                <label>Doctor Full Name</label>
+                <input type="text" id="docName" placeholder="e.g. Dr. Ali Khan">
+            </div>
+            <div class="form-group">
+                <label>Specialization</label>
+                <select id="docSpec">
+                    <option value="General">General Physician</option>
+                    <option value="Cardiologist">Cardiologist</option>
+                    <option value="Dermatologist">Dermatologist</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Experience (Years)</label>
+                <input type="number" id="docExp" placeholder="e.g. 10">
+            </div>
+            <div class="form-group">
+                <label>Rating (1.0 - 5.0)</label>
+                <input type="number" step="0.1" id="docRating" placeholder="e.g. 4.8">
+            </div>
+            <div class="form-group">
+                <label>City / Location</label>
+                <input type="text" id="docLoc" placeholder="e.g. Lahore">
+            </div>
+            <div class="form-group">
+                <label>Hospital / Clinic</label>
+                <input type="text" id="docHosp" placeholder="e.g. Mayo Hospital">
+            </div>
+            <div class="form-group">
+                <label>Consultation Fee (Rs.)</label>
+                <input type="number" id="docFee" placeholder="e.g. 2000">
+            </div>
+            <button class="submit-doc-btn" onclick="addNewDoctor()">Register Doctor Into Database</button>
+        </div>
+    </div>
+
+    <!-- VIEW 1: APPOINTMENTS MATRIX -->
+    <div id="appointmentsViewSegment">
+        <h3 class="no-print" style="margin-bottom: 0.5rem; color: var(--text-title);">📅 Live Appointments Control Matrix</h3>
+        <div id="printSection">
+            <h2 class="only-print-title" style="display: none; text-align: center; margin-bottom: 2rem;">DMart Official Booking Receipt Log</h2>
+            <table>
+                <thead>
+                <tr>
+                    <th class="no-print"><input type="checkbox" id="selectAll" onclick="toggleSelectAll(this)"></th>
+                    <th>ID</th>
+                    <th>Doctor ID</th>
+                    <th>Patient Name</th>
+                    <th>Contact Phone</th>
+                    <th>Appointment Date</th>
+                    <th>Status Operations</th>
+                    <th class="no-print">Management</th>
+                </tr>
+                </thead>
+                <tbody id="adminTableBody">
+                <!-- Dynamic Rows -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- VIEW 2: DOCTORS REGISTRY GRID -->
+    <div id="doctorsViewSegment" class="hidden">
+        <h3 style="margin-bottom: 0.5rem; color: var(--text-title);">📋 Hospital Clinical Doctors Registry</h3>
+        <table>
+            <thead>
+            <tr>
+                <th>Doc ID</th>
+                <th>Full Name</th>
+                <th>Specialization</th>
+                <th>Experience</th>
+                <th>Rating</th>
+                <th>City Matrix</th>
+                <th>Hospital Base</th>
+                <th>Fee Config</th>
+                <th>Management</th>
+            </tr>
+            </thead>
+            <tbody id="doctorsTableBody">
+            <!-- Doctors Live Data Script -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    // AUTOMATIC LOCALHOST PORT BALANCER
+    const BASE_URL = "http://localhost:8080/api";
+    let currentView = "appointments";
+
+    document.addEventListener("DOMContentLoaded", function() {
+        let isAuthenticated = sessionStorage.getItem("admin_logged_in");
+        if (isAuthenticated !== "true") {
+            let passwordInput = prompt("Enter Secure Admin Master Password:");
+            if (passwordInput === "admin123") {
+                sessionStorage.setItem("admin_logged_in", "true");
+                loadAdminBookings();
+            } else {
+                alert("Wrong Password!");
+                window.location.href = "index.html";
+            }
+        } else {
+            loadAdminBookings();
+        }
+    });
+
+    // VIEW TOGGLER LOGIC
+    function toggleMainViews() {
+        const appView = document.getElementById("appointmentsViewSegment");
+        const docView = document.getElementById("doctorsViewSegment");
+        const toggleBtn = document.getElementById("viewToggleBtn");
+        const printBtn = document.getElementById("printBtn");
+
+        if (currentView === "appointments") {
+            appView.classList.add("hidden");
+            docView.classList.remove("hidden");
+            printBtn.classList.add("hidden");
+            toggleBtn.innerText = "📅 View Live Appointments";
+            toggleBtn.style.backgroundColor = "#0284c7";
+            currentView = "doctors";
+            loadAdminDoctors();
+        } else {
+            docView.classList.add("hidden");
+            appView.classList.remove("hidden");
+            printBtn.classList.remove("hidden");
+            toggleBtn.innerText = "📋 View Doctors Registry";
+            toggleBtn.style.backgroundColor = "#6366f1";
+            currentView = "appointments";
+            loadAdminBookings();
+        }
+    }
+
+    // LOAD ALL DOCTORS DATA
+    async function loadAdminDoctors() {
+        const tbody = document.getElementById("doctorsTableBody");
+        tbody.innerHTML = "<tr><td colspan='9' style='text-align:center;'>Scanning staff registry logs...</td></tr>";
+
+        try {
+            const response = await fetch(`${BASE_URL}/admin/doctors_list`);
+            const data = await response.json();
+
+            if(data.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='9' style='text-align:center;'>No staff nodes operational inside database.</td></tr>";
+                return;
+            }
+
+            tbody.innerHTML = data.map(doc => {
+                let finalName = doc.name.trim();
+                if (!finalName.toLowerCase().startsWith("dr.") && !finalName.toLowerCase().startsWith("prof.")) {
+                    finalName = "Dr. " + finalName;
+                }
+
+                return `
+                    <tr id="doc-row-${doc.id}">
+                        <td><b>#${doc.id}</b></td>
+                        <td>${finalName}</td>
+                        <td><span style="background:#f0fdf4; color:#166534; padding:0.2rem 0.5rem; border-radius:0.25rem; font-weight:bold; font-size:0.85rem;">${doc.specialization}</span></td>
+                        <td>${doc.experience} Years</td>
+                        <td>⭐ ${doc.rating.toFixed(1)}</td>
+                        <td>${doc.location}</td>
+                        <td>${doc.hospital}</td>
+                        <td><b style="color:#15803d;">Rs. ${doc.fee}</b></td>
+                        <td>
+                            <button class="btn delete-btn" onclick="deleteDoctorProfile(${doc.id}, '${finalName}')">🗑️ Remove</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+        } catch (error) {
+            tbody.innerHTML = "<tr><td colspan='9' style='text-align:center; color:red;'>Handshake failure fetching doctor metrics.</td></tr>";
+        }
+    }
+
+    // DELETE DOCTOR PROFILE
+    async function deleteDoctorProfile(id, name) {
+        if(!confirm(`Are you sure you want to remove ${name}?`)) return;
+        try {
+            const response = await fetch(`${BASE_URL}/admin/doctors/delete/${id}`);
+            if(response.ok) {
+                const text = await response.text();
+                alert(text);
+                document.getElementById(`doc-row-${id}`).remove();
+            }
+        } catch (err) {
+            alert("Failed to delete doctor.");
+        }
+    }
+
+    // FETCH ALL BOOKINGS
+    async function loadAdminBookings() {
+        const tbody = document.getElementById("adminTableBody");
+        tbody.innerHTML = "<tr><td colspan='8' style='text-align:center;'>Fetching cloud records...</td></tr>";
+
+        try {
+            const response = await fetch(`${BASE_URL}/admin/bookings`);
+            const data = await response.json();
+
+            if(data.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='8' style='text-align:center;'>No live appointments found inside SQL node.</td></tr>";
+                return;
+            }
+
+            tbody.innerHTML = data.map(app => `
+                <tr id="row-${app.id}">
+                    <td class="no-print"><input type="checkbox" class="print-checkpoint" value="${app.id}"></td>
+                    <td><b>#${app.id}</b></td>
+                    <td>Doc ID: ${app.doctorId}</td>
+                    <td>${app.patientName}</td>
+                    <td>${app.patientPhone}</td>
+                    <td>${app.appointmentDate}</td>
+                    <td>
+                        <select class="status-select status-${app.status}" onchange="changeStatus(${app.id}, this)">
+                            <option value="Booked" ${app.status === 'Booked' ? 'selected' : ''}>📅 Booked</option>
+                            <option value="Visited" ${app.status === 'Visited' ? 'selected' : ''}>✅ Checkup Done</option>
+                            <option value="Missing" ${app.status === 'Missing' ? 'selected' : ''}>❌ Missing / No Show</option>
+                        </select>
+                    </td>
+                    <td class="no-print">
+                        <button class="btn delete-btn" onclick="deleteBooking(${app.id})">🗑️ Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (error) {
+            tbody.innerHTML = "<tr><td colspan='8' style='text-align:center; color:red;'>Handshake failure: Local backend offline.</td></tr>";
+        }
+    }
+
+    // UPDATE STATUS FUNCTION (100% CORS Proof via GetMapping Method)
+    async function changeStatus(id, selectElement) {
+        const newStatus = selectElement.value;
+        try {
+            const response = await fetch(`${BASE_URL}/admin/bookings/update_status?id=${id}&status=${newStatus}`);
+            if(response.ok) {
+                const text = await response.text();
+                alert(text);
+                selectElement.className = `status-select status-${newStatus}`;
+            } else {
+                alert("Server refused update mapping.");
+            }
+        } catch (err) {
+            alert("Failed to update status.");
+        }
+    }
+
+    // DELETE BOOKING LOGIC
+    async function deleteBooking(id) {
+        if(!confirm("Are you sure you want to delete booking #" + id + "?")) return;
+        try {
+            const response = await fetch(`${BASE_URL}/admin/bookings/delete/${id}`);
+            if(response.ok) {
+                const text = await response.text();
+                alert(text);
+                document.getElementById(`row-${id}`).remove();
+            }
+        } catch (err) {
+            alert("Purge transaction failed.");
+        }
+    }
+
+    // ADD NEW DOCTOR
+    async function addNewDoctor() {
+        const name = document.getElementById('docName').value;
+        const specialization = document.getElementById('docSpec').value;
+        const experience = parseInt(document.getElementById('docExp').value);
+        const rating = parseFloat(document.getElementById('docRating').value);
+        const location = document.getElementById('docLoc').value;
+        const hospital = document.getElementById('docHosp').value;
+        const fee = parseInt(document.getElementById('docFee').value);
+
+        if(!name || !location || !hospital || !fee) { alert("Please complete doctor profile attributes!"); return; }
+
+        try {
+            const response = await fetch(`${BASE_URL}/admin/doctors`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, specialization, experience, rating, location, hospital, fee })
+            });
+            if(response.ok) {
+                const text = await response.text();
+                alert(text);
+                document.getElementById('docName').value = '';
+                document.getElementById('docLoc').value = '';
+                document.getElementById('docHosp').value = '';
+                document.getElementById('docFee').value = '';
+                if(currentView === "doctors") loadAdminDoctors();
+            }
+        } catch (err) {
+            alert("Failed to save doctor.");
+        }
+    }
+
+    function toggleSelectAll(master) {
+        const checkboxes = document.querySelectorAll('.print-checkpoint');
+        checkboxes.forEach(cb => cb.checked = master.checked);
+    }
+
+    function printSelectedAppointments() {
+        const checkboxes = document.querySelectorAll('.print-checkpoint');
+        let selectedAny = false;
+
+        checkboxes.forEach(cb => {
+            const row = document.getElementById(`row-${cb.value}`);
+            if (!cb.checked) row.classList.add('no-print');
+            else { row.classList.remove('no-print'); selectedAny = true; }
+        });
+
+        if(!selectedAny) { alert("Please check at least one box to print!"); return; }
+        window.print();
+        checkboxes.forEach(cb => document.getElementById(`row-${cb.value}`).classList.remove('no-print'));
+    }
+
+    function logoutAdmin() {
+        sessionStorage.removeItem("admin_logged_in");
+        window.location.href = "index.html";
+    }
+</script>
+</body>
+</html>
