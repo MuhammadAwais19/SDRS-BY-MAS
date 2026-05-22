@@ -458,9 +458,24 @@
         setTimeout(() => {
             printFrame.contentWindow.focus();
             printFrame.contentWindow.print();
-        }, 300);
-    }
 
+       }, 300);
+    }
+ // SECURE LOGOUT FUNCTION
+    function logoutAdmin() {
+        const confirmLogout = confirm("Are you sure you want to logout?");
+
+        if(confirmLogout) {
+            // Remove admin session
+            sessionStorage.removeItem("admin_logged_in");
+
+            // Success message
+            alert("Admin logged out successfully!");
+
+            // Redirect back to login page
+            window.location.href = "index.html";
+        }
+    }
 </script>
 </div>
 </body>
