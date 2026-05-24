@@ -86,7 +86,7 @@ public class ApiController {
         return doctorRepo.findAll();
     }
 
-    // 3. DELETE BOOKING ACTION (CORS-Safe GetMapping strategy)
+//     3. DELETE BOOKING ACTION (CORS-Safe GetMapping strategy)
     @GetMapping("/admin/bookings/delete/{id}")
     public String deleteBooking(@PathVariable int id) {
         try {
